@@ -13,6 +13,10 @@ add_action( 'wp_enqueue_scripts', function() {
 	exit;
 } );
 
+add_action( 'admin_enqueue_scripts', function() {
+	wp_enqueue_style( 'reddit-css', plugin_dir_url( __FILE__ ) . 'styles.css' );
+});
+
 
 // add images box in ins poster editor
 add_action( 'add_meta_boxes_insta_poster', function( $post ) {
@@ -20,19 +24,7 @@ add_action( 'add_meta_boxes_insta_poster', function( $post ) {
 		'scraped-images-box',
 		__( 'Scrapped Images from Reddit' ),
 		function() {
-			$sub_reddit_list = get_option( 'sub_reddit_list', array() );
-
-			echo '<pre>';
-			print_r( $sub_reddit_list );
-			echo '</pre>';
-
-			$sub_reddit = get_field( 'sub_reddit', $_GET['post'] );
-
-			$article_list = get_option( 'sub_reddit_' . $sub_reddit, array() );
-
-			echo '<pre>';
-			print_r( $article_list );
-			echo '</pre>';
+			require_once 'tpl-main.php';
 		}
 	);
 } );
