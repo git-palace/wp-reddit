@@ -32,13 +32,7 @@ add_action( 'add_meta_boxes_insta_poster', function( $post ) {
 
 // hook when insta_poster is published
 add_action( 'publish_insta_poster', function( $id, $post ) {
-	scrape_reddit( $id );
-}, 10, 2 );
-
-
-// get data from reddit
-function scrape_reddit( $post_id ) {
-	$sub_reddit = get_field( 'sub_reddit', $post_id );
+	$sub_reddit = get_field( 'sub_reddit', $id );
 
 	if ( !isset( $sub_reddit ) || empty( $sub_reddit ) )
 		return;
@@ -50,6 +44,41 @@ function scrape_reddit( $post_id ) {
 
 		update_option( 'sub_reddit_list', $sub_reddit_list );
 	}
+
+	scrape_reddit( $sub_reddit );
+}, 10, 2 );
+
+
+function reddit_image_upload( $sub_reddit, $org_img_url ) {
+	if ( !isset( $org_img_url ) || empty( $org_img_url ) )
+		return;
+
+	$upload_dir = wp_upload_dir();
+
+	$img_path = trailingslashit( trailingslashit( $upload_dir['basedir'] ) . 'reddit-images/' . $sub_reddit );
+
+	if ( !file_exists( $img_path ) )
+		wp_mkdir_p( $img_path );
+
+	try {
+
+		$strs = explode( '/', $org_img_url );
+
+		$strs = explode( '?', array_pop( $strs ) );
+
+		$filename = array_shift( $strs );
+
+		file_put_contents( $img_path . $filename, file_get_contents( $org_img_url ) );
+
+	} catch (Exception $e) {
+
+	}
+
+	return trailingslashit( trailingslashit( $upload_dir['baseurl'] ) . 'reddit-images/' . $sub_reddit ) . $filename;
+}
+
+// get data from reddit
+function scrape_reddit( $sub_reddit ) {
 
 	$url = sprintf( 'https://www.reddit.com/r/%s/.json?limit=10', $sub_reddit );
 
@@ -73,7 +102,7 @@ function scrape_reddit( $post_id ) {
 
 			if ( array_key_exists( 'preview', $article['data'] ) ) {
 				foreach ( $article['data']['preview']['images'] as $image )
-					$temp_article['images'][] = $image['source']['url'];
+					$temp_article['images'][] = reddit_image_upload( $sub_reddit, $image['source']['url'] );
 			}
 
 			$article_list[$timestamp] = $temp_article;
@@ -82,3 +111,11 @@ function scrape_reddit( $post_id ) {
 
 	update_option( 'sub_reddit_' . $sub_reddit, $article_list );
 }
+
+add_action( 'scrap_all_sub_reddits', function() {
+	$sub_reddit_list = get_option( 'sub_reddit_list', array() );
+
+	foreach ( $sub_reddit_list as $sub_reddit ) {
+		scrape_reddit( $sub_reddit );
+	}
+} );
